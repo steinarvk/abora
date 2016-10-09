@@ -10,6 +10,7 @@ import (
 
 	"github.com/steinarvk/abora/analysis"
 	"github.com/steinarvk/abora/colorscale"
+	"github.com/steinarvk/abora/http/params"
 	"github.com/steinarvk/abora/snippet"
 )
 
@@ -23,13 +24,13 @@ type studioServer struct {
 }
 
 func (s *studioServer) getSnippet(req *http.Request) (snippet.Snippet, error) {
-	params := &paramGetter{req, nil}
+	params := params.Getter(req)
 
-	t := params.getFloat("t", 0.0)
-	dur := params.getFloat("duration", 5.0)
+	t := params.Float("t", 0.0)
+	dur := params.Float("duration", 5.0)
 
-	if params.err != nil {
-		return nil, params.err
+	if params.Err() != nil {
+		return nil, params.Err()
 	}
 
 	return snippet.SubsnippetByTime(s.snip, t, dur), nil
@@ -45,16 +46,16 @@ func (s *studioServer) serveSpectrogram(w http.ResponseWriter, req *http.Request
 		return err
 	}
 
-	params := &paramGetter{req, nil}
+	params := params.Getter(req)
 
-	timeRes := params.getFloat("timeRes", 100.0)
-	freqRes := params.getInt("freqRes", 1000)
-	lowHz := params.getFloat("lowHz", 500.0)
-	highHz := params.getFloat("highHz", 5000.0)
-	windowSize := params.getFloat("windowSize", 0.05)
+	timeRes := params.Float("timeRes", 100.0)
+	freqRes := params.Int("freqRes", 1000)
+	lowHz := params.Float("lowHz", 500.0)
+	highHz := params.Float("highHz", 5000.0)
+	windowSize := params.Float("windowSize", 0.05)
 
-	if params.err != nil {
-		return params.err
+	if params.Err() != nil {
+		return params.Err()
 	}
 
 	anal, err := analysis.Analyze(snip, &analysis.Params{

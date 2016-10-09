@@ -1,4 +1,4 @@
-package main
+package params
 
 import (
 	"log"
@@ -6,12 +6,20 @@ import (
 	"strconv"
 )
 
-type paramGetter struct {
+type ParamGetter struct {
 	r   *http.Request
 	err error
 }
 
-func (p *paramGetter) getFloat(name string, defValue float64) float64 {
+func Getter(r *http.Request) *ParamGetter {
+	return &ParamGetter{r, nil}
+}
+
+func (p *ParamGetter) Err() error {
+	return p.err
+}
+
+func (p *ParamGetter) Float(name string, defValue float64) float64 {
 	v, err := floatParam(p.r, name, defValue)
 	if err != nil {
 		p.err = err
@@ -19,7 +27,7 @@ func (p *paramGetter) getFloat(name string, defValue float64) float64 {
 	return v
 }
 
-func (p *paramGetter) getInt(name string, defValue int) int {
+func (p *ParamGetter) Int(name string, defValue int) int {
 	v, err := intParam(p.r, name, defValue)
 	if err != nil {
 		p.err = err
