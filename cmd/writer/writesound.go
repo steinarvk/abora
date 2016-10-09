@@ -23,6 +23,11 @@ var (
 	freqMultiplier         = flag.Float64("freq_multiplier", 1.0, "frequency multiplier")
 	speedMultiplier        = flag.Float64("speed_multiplier", 1.0, "speed multiplier")
 	silenceSpeedMultiplier = flag.Float64("silence_speed_multiplier", 1.0, "silence speed multiplier")
+	harmonics              = flag.Int("harmonics", 1, "number of harmonics in output")
+	harmonicsFalloffPower  = flag.Float64("harmonics_falloff_power", 2, "power of amplitude falloff of harmonics")
+	vibratoIntensity       = flag.Float64("vibrato_intensity", 0, "intensity of vibrato (multiplier for base frequency)")
+	tremoloIntensity       = flag.Float64("tremolo_intensity", 0, "intensity of tremolo")
+	vibratoFrequency       = flag.Float64("vibrato_frequency", 5, "frequency of vibrato")
 )
 
 type soundPoint struct {
@@ -49,11 +54,12 @@ func (s sound) String() string {
 }
 
 type soundInst struct {
-	playing   bool
-	timeSpent float64
-	u         float64
-	s         *sound
-	env       *asdr
+	playing    bool
+	timeSpent  float64
+	u          float64
+	s          *sound
+	env        *asdr
+	tremoloMul float64
 }
 
 type asdr struct {
@@ -95,7 +101,7 @@ func newASDR(totalTime float64) *asdr {
 }
 
 func (s sound) play() *soundInst {
-	return &soundInst{true, 0.0, 0.0, &s, newASDR(s.end - s.begin)}
+	return &soundInst{true, 0.0, 0.0, &s, newASDR(s.end - s.begin), 1.0}
 }
 
 func (s *soundInst) freq() float64 {
@@ -113,7 +119,12 @@ func (s *soundInst) value() float64 {
 	if !s.playing {
 		return 0.0
 	}
-	return 0.15 * s.env.value(s.timeSpent) * math.Sin(s.u)
+	a := 0.15 * s.env.value(s.timeSpent) * s.tremoloMul
+	var rv float64
+	for i := 1; i <= *harmonics; i++ {
+		rv += math.Sin(s.u*float64(i)) / math.Pow(float64(i), *harmonicsFalloffPower)
+	}
+	return a * rv
 }
 
 func (s *soundInst) addTime(dt float64) {
@@ -124,8 +135,16 @@ func (s *soundInst) addTime(dt float64) {
 	}
 
 	correction := *freqMultiplier / *speedMultiplier
+	baseFreq := s.freq()
+	freq := baseFreq
+	if *vibratoIntensity > 0 || *tremoloIntensity > 0 {
+		v := math.Sin(*vibratoFrequency * s.timeSpent * (math.Pi * 2.0))
+		vibratoMul := *vibratoIntensity * v
+		s.tremoloMul = 1.0 + *tremoloIntensity*v
+		freq += vibratoMul * baseFreq
+	}
 
-	s.u += math.Pi * s.freq() * dt * correction
+	s.u += math.Pi * freq * dt * correction
 }
 
 func parseAdHocFormat(filename string) ([]sound, error) {

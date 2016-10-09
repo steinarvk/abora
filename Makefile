@@ -1,12 +1,12 @@
-.PHONY: all clean dependencies
+.PHONY: all clean dependencies reader writer
+
+all: reader writer
 
 reader:
 	go build github.com/steinarvk/abora/cmd/reader
 
 writer:
 	go build github.com/steinarvk/abora/cmd/writer
-
-all: reader writer
 
 clean:
 	rm -f reader writer
