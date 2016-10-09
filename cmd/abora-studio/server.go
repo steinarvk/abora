@@ -36,6 +36,73 @@ func (s *studioServer) getSnippet(req *http.Request) (snippet.Snippet, error) {
 	return snippet.SubsnippetByTime(s.snip, t, dur), nil
 }
 
+func (s *studioServer) getAnalysisParams(req *http.Request) (*analysis.Params, error) {
+	params := params.Getter(req)
+
+	timeRes := params.Float("timeRes", 100.0)
+	freqRes := params.Int("freqRes", 1000)
+	lowHz := params.Float("lowHz", 500.0)
+	highHz := params.Float("highHz", 5000.0)
+	windowSize := params.Float("windowSize", 0.05)
+
+	loudnessWindowSize := params.Float("loudnessWindowSize", 0.001)
+
+	if params.Err() != nil {
+		return nil, params.Err()
+	}
+
+	return &analysis.Params{
+		LoudnessWindowSizeSeconds: loudnessWindowSize,
+		MinWindowSizeSeconds:      windowSize,
+		NumberOfFrequencyBuckets:  freqRes,
+		Range: &analysis.FrequencyRange{
+			LowHz:  lowHz,
+			HighHz: highHz,
+		},
+		AnalysesPerSecond: timeRes,
+	}, nil
+}
+
+func (s *studioServer) serveLoudness(w http.ResponseWriter, req *http.Request) error {
+	v := req.URL.Query()
+	log.Printf("serving loudness request: %v", v)
+	defer log.Printf("done serving loudness request: %v", v)
+
+	params := params.Getter(req)
+
+	loudnessHeight := params.Int("loudnessHeight", 100)
+
+	if params.Err() != nil {
+		return params.Err()
+	}
+
+	snip, err := s.getSnippet(req)
+	if err != nil {
+		return err
+	}
+
+	analParams, err := s.getAnalysisParams(req)
+	if err != nil {
+		return err
+	}
+
+	anal, err := analysis.AnalyzeLoudness(snip, analParams)
+	if err != nil {
+		return err
+	}
+
+	img := anal.Visualize(loudnessHeight, anal.DefaultValueMapper(), colorscale.Viridis)
+
+	w.Header().Set("Content-Type", "image/png")
+
+	if err := png.Encode(w, img); err != nil {
+		log.Printf("write/encode error: %v", err)
+		return err
+	}
+
+	return nil
+}
+
 func (s *studioServer) serveSpectrogram(w http.ResponseWriter, req *http.Request) error {
 	v := req.URL.Query()
 	log.Printf("serving spectrogram request: %v", v)
@@ -46,27 +113,12 @@ func (s *studioServer) serveSpectrogram(w http.ResponseWriter, req *http.Request
 		return err
 	}
 
-	params := params.Getter(req)
-
-	timeRes := params.Float("timeRes", 100.0)
-	freqRes := params.Int("freqRes", 1000)
-	lowHz := params.Float("lowHz", 500.0)
-	highHz := params.Float("highHz", 5000.0)
-	windowSize := params.Float("windowSize", 0.05)
-
-	if params.Err() != nil {
-		return params.Err()
+	params, err := s.getAnalysisParams(req)
+	if err != nil {
+		return err
 	}
 
-	anal, err := analysis.Analyze(snip, &analysis.Params{
-		MinWindowSizeSeconds:     windowSize,
-		NumberOfFrequencyBuckets: freqRes,
-		Range: &analysis.FrequencyRange{
-			LowHz:  lowHz,
-			HighHz: highHz,
-		},
-		AnalysesPerSecond: timeRes,
-	})
+	anal, err := analysis.Analyze(snip, params)
 	if err != nil {
 		return err
 	}
@@ -107,6 +159,7 @@ func mainCore() error {
 	serv := &studioServer{snip}
 
 	http.HandleFunc("/spectrogram", serveErrorOr(serv.serveSpectrogram))
+	http.HandleFunc("/loudness", serveErrorOr(serv.serveLoudness))
 
 	servePattern := fmt.Sprintf(":%d", *port)
 	log.Printf("listening on %q", servePattern)

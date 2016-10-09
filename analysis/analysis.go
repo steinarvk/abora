@@ -4,6 +4,7 @@ import (
 	"github.com/steinarvk/abora/snippet"
 	"github.com/steinarvk/abora/stats"
 	"log"
+	"math"
 
 	"github.com/mjibson/go-dsp/spectral"
 )
@@ -14,19 +15,21 @@ type FrequencyRange struct {
 }
 
 type Params struct {
-	MinWindowSizeSeconds     float64
-	AnalysesPerSecond        float64
-	Range                    *FrequencyRange
-	NumberOfFrequencyBuckets int
-	PwelchPadding            *int
+	MinWindowSizeSeconds      float64
+	LoudnessWindowSizeSeconds float64
+	AnalysesPerSecond         float64
+	Range                     *FrequencyRange
+	NumberOfFrequencyBuckets  int
+	PwelchPadding             *int
 }
 
 var (
 	defaultPwelchPadding = 8192
 
 	defaultParams = Params{
-		MinWindowSizeSeconds: 0.05,
-		AnalysesPerSecond:    100.0,
+		MinWindowSizeSeconds:      0.05,
+		LoudnessWindowSizeSeconds: 0.005,
+		AnalysesPerSecond:         100.0,
 		Range: &FrequencyRange{
 			LowHz:  500.0,
 			HighHz: 5000.0,
@@ -48,6 +51,15 @@ type Analysis struct {
 	FrequencyBuckets      []FrequencyRange
 	SampleRate            int
 	Points                []*AnalysisPoint
+	ValueStats            *stats.ValueCollection
+	WindowSize            int
+	FramesBetweenAnalyses int
+}
+
+type LoudnessAnalysis struct {
+	Params                *Params
+	SampleRate            int
+	Values                []float64
 	ValueStats            *stats.ValueCollection
 	WindowSize            int
 	FramesBetweenAnalyses int
@@ -142,6 +154,10 @@ func normalizeParams(s snippet.Snippet, params *Params) error {
 		params.MinWindowSizeSeconds = defaultParams.MinWindowSizeSeconds
 	}
 
+	if params.LoudnessWindowSizeSeconds == 0 {
+		params.LoudnessWindowSizeSeconds = defaultParams.LoudnessWindowSizeSeconds
+	}
+
 	if params.AnalysesPerSecond == 0 {
 		params.AnalysesPerSecond = defaultParams.AnalysesPerSecond
 	}
@@ -178,6 +194,21 @@ func (a *Analysis) newPoint(sampleNo int, pxx, freqs []float64) (*AnalysisPoint,
 	return point, nil
 }
 
+func rootMeanSquare(xs []float64) float64 {
+	var rv float64
+	for _, x := range xs {
+		rv += x * x
+	}
+	return math.Sqrt(rv / float64(len(xs)))
+}
+
+func (a *LoudnessAnalysis) addPoint(_ int64, frames []float64) error {
+	value := rootMeanSquare(frames)
+	a.Values = append(a.Values, value)
+	a.ValueStats.Add(value)
+	return nil
+}
+
 func (a *Analysis) addPoint(sampleNo int64, frames []float64) error {
 	pxx, freqs := spectral.Pwelch(frames, float64(a.SampleRate), a.pwelchOpts())
 	point, err := a.newPoint(int(sampleNo), pxx, freqs)
@@ -186,6 +217,30 @@ func (a *Analysis) addPoint(sampleNo int64, frames []float64) error {
 	}
 	a.Points = append(a.Points, point)
 	return nil
+}
+
+func AnalyzeLoudness(s snippet.Snippet, params *Params) (*LoudnessAnalysis, error) {
+	if params == nil {
+		params = &Params{}
+	}
+	if err := normalizeParams(s, params); err != nil {
+		return nil, err
+	}
+
+	rv := &LoudnessAnalysis{
+		Params:     params,
+		SampleRate: s.SampleRate(),
+		ValueStats: stats.New(),
+	}
+
+	rv.WindowSize = int(float64(s.SampleRate()) * params.LoudnessWindowSizeSeconds)
+	rv.FramesBetweenAnalyses = int(float64(s.SampleRate()) / params.AnalysesPerSecond)
+
+	if err := onWindows(rv.WindowSize, rv.FramesBetweenAnalyses, snippet.Scan(s), rv.addPoint); err != nil {
+		return nil, err
+	}
+
+	return rv, nil
 }
 
 func Analyze(s snippet.Snippet, params *Params) (*Analysis, error) {
