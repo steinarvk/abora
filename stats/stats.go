@@ -11,6 +11,10 @@ type ValueCollection struct {
 	sorted bool
 }
 
+func (v *ValueCollection) Count() int {
+	return len(v.values)
+}
+
 func New() *ValueCollection {
 	return &ValueCollection{}
 }
