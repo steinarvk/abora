@@ -28,6 +28,7 @@ var (
 	vibratoIntensity       = flag.Float64("vibrato_intensity", 0, "intensity of vibrato (multiplier for base frequency)")
 	tremoloIntensity       = flag.Float64("tremolo_intensity", 0, "intensity of tremolo")
 	vibratoFrequency       = flag.Float64("vibrato_frequency", 5, "frequency of vibrato")
+	expectPixels           = flag.Bool("pixel_input", true, "expect input in the form of pixels")
 )
 
 type soundPoint struct {
@@ -178,16 +179,22 @@ func parseAdHocFormat(filename string) ([]sound, error) {
 			if len(xAndY) != 2 {
 				return nil, fmt.Errorf("line %d: component %q invalid", lineno, comp)
 			}
-			x, err := strconv.Atoi(xAndY[0])
+			x, err := strconv.ParseFloat(xAndY[0], 64)
 			if err != nil {
 				return nil, fmt.Errorf("line %d: component %q invalid (%v)", lineno, comp, err)
 			}
-			y, err := strconv.Atoi(xAndY[1])
+			y, err := strconv.ParseFloat(xAndY[1], 64)
 			if err != nil {
 				return nil, fmt.Errorf("line %d: component %q invalid (%v)", lineno, comp, err)
 			}
-			secs := float64(x) / *pixelsPerSecond
-			freq := *highFrequency + (*lowFrequency-*highFrequency)*(float64(y)/float64(*imageHeight))
+			var secs, freq float64
+			if *expectPixels {
+				secs = float64(x) / *pixelsPerSecond
+				freq = *highFrequency + (*lowFrequency-*highFrequency)*(float64(y)/float64(*imageHeight))
+			} else {
+				secs = float64(x)
+				freq = float64(y)
+			}
 
 			if secs < 0 || secs > 3600 {
 				return nil, fmt.Errorf("line %d: component %q has non-sensible time (%f)", lineno, comp, secs)

@@ -16,6 +16,10 @@ type Snippet interface {
 	Subsnippet(i, j int) Snippet
 }
 
+func Duration(s Snippet) float64 {
+	return float64(s.TotalSamples()) / float64(s.SampleRate())
+}
+
 func Scan(s Snippet) <-chan float64 {
 	sz := 4096
 	ch := make(chan float64, sz)

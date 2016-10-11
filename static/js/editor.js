@@ -1,3 +1,5 @@
+$(function() {
+
 var canvas = new fabric.Canvas("canvas");
 canvas.selection = false;
 
@@ -5,7 +7,11 @@ var selectedItem = null;
 var drawingLineseg = null;
 var extendingLineseg = null;
 
+var fullModel = [];
+
 function createLineseg(x, y) {
+  var xTrans = 0;
+
   var rv = {
     currentColour: "red",
   };
@@ -80,6 +86,7 @@ function createLineseg(x, y) {
     lines.forEach(function(line) {
       line.remove();
     });
+    fullModel.remove(rv);
   }
 
   rv.setUnselected = function() {
@@ -94,6 +101,49 @@ function createLineseg(x, y) {
     }
   }
 
+  function fromPixelspaceX(trans, x) {
+    return x * trans.xMul + trans.xAdd;
+  }
+
+  function fromPixelspaceY(trans, y) {
+    return y * trans.yMul + trans.yAdd;
+  }
+
+  rv.setTransformation = function(oldTrans, newTrans) {
+    var nxAdd = newTrans.xAdd, nxMul = newTrans.xMul;
+    var nyAdd = newTrans.yAdd, nyMul = newTrans.yMul;
+    console.log("setting trans " + nxAdd);
+    console.log("setting trans " + nxMul);
+    console.log("setting trans " + nyAdd);
+    console.log("setting trans " + nyMul);
+    function transformX(x) {
+      return (fromPixelspaceX(oldTrans, x) - nxAdd) / nxMul;
+    }
+    function transformY(y) {
+      return (fromPixelspaceY(oldTrans, y) - nyAdd) / nyMul;
+    }
+    dots.forEach(function(dot) {
+      console.log("dot was at x " + dot.get("left"));
+      console.log("dot was at y " + dot.get("top"));
+      console.log("dot was at time " + fromPixelspaceX(oldTrans, dot.get("left")));
+      console.log("dot was at freq " + fromPixelspaceX(oldTrans, dot.get("top")));
+      dot.set("left", transformX(dot.get("left")));;
+      dot.set("top", transformY(dot.get("top")));;
+    });
+    lines.forEach(function(line) {
+      line.set("x1", transformX(line.get("x1")));
+      line.set("x2", transformX(line.get("x2")));
+      line.set("y1", transformY(line.get("y1")));
+      line.set("y2", transformY(line.get("y2")));
+    });
+    dots.forEach(function(dot) {
+      console.log("dot is at x " + dot.get("left"));
+      console.log("dot is at y " + dot.get("top"));
+      console.log("dot is at time " + fromPixelspaceX(newTrans, dot.get("left")));
+      console.log("dot is at freq " + fromPixelspaceX(newTrans, dot.get("top")));
+    });
+  }
+
   rv.setSelected = function() {
     if (selectedItem) {
       selectedItem.setUnselected();
@@ -101,6 +151,16 @@ function createLineseg(x, y) {
     selectedItem = rv;
     rv.setColour("purple");
   };
+
+  rv.toStringForm = function(trans) {
+    var rv = [];
+    dots.forEach(function(dot) {
+      var t = fromPixelspaceX(trans, dot.get("left"));
+      var freq = fromPixelspaceY(trans, dot.get("top"));
+      rv.push("" + t + ":" + freq);
+    });
+    return rv.join("-");
+  }
 
   dots.forEach(function(x) {
     canvas.add(x);
@@ -112,6 +172,8 @@ function createLineseg(x, y) {
   });
 
   rv.addPoint(x, y);
+
+  fullModel.push(rv);
 
   return rv;
 }
@@ -190,6 +252,75 @@ document.addEventListener("keydown", function(evt) {
   canvas.renderAll();
 }, false);
 
-canvas.setBackgroundImage('/tmp/spec2.png', canvas.renderAll.bind(canvas));
+function makeParams(offset, duration) {
+  var w = canvas.width, h = canvas.height;
+  var params = {
+    pxWidth: w,
+    pxHeight: h,
+    duration: duration,
+    t: offset,
+  };
+  return params;
+}
 
+function withMetadata(params, f) {
+  $.get("/spectrogram/metadata", params).done(function(data) {
+    f(data);
+  });
+}
 
+function displayBackgroundSpectrogram(params) {
+  var imageUrl = "/spectrogram/png?" + $.param(params);
+  canvas.setBackgroundImage(imageUrl, canvas.renderAll.bind(canvas));
+}
+
+var currentOffset = 0;
+var currentDuration = 10;
+
+var transformation = null;
+
+function refreshView() {
+  var params = makeParams(currentOffset, currentDuration);
+  withMetadata(params, function(metadata) {
+    var newTrans = {
+      xAdd: currentOffset,
+      xMul: 1.0 / metadata.TimeResolution,
+      yAdd: metadata.HighFrequency,
+      yMul: (metadata.LowFrequency - metadata.HighFrequency) / metadata.FrequencyBuckets
+    };
+    fullModel.forEach(function(x) {
+      x.setTransformation(transformation, newTrans);
+    });
+    transformation = newTrans;
+    canvas.renderAll();
+  });
+  displayBackgroundSpectrogram(params);
+  canvas.renderAll();
+}
+
+$("body").append($("<button/>").text("Forward").click(function() {
+  currentOffset += 2;
+  refreshView();
+}));
+
+$("body").append($("<button/>").text("Back").click(function() {
+  currentOffset -= 2;
+  if (currentOffset < 0) {
+    currentOffset = 0;
+  }
+  refreshView();
+}));
+
+$("body").append($("<textarea id='dump'/>"));
+
+$("body").append($("<button/>").text("Dump")).click(function() {
+  var rv = [];
+  fullModel.forEach(function(x) {
+    rv.push(x.toStringForm(transformation));
+  });
+  $("#dump").text(rv.join("\n"));
+});
+
+refreshView();
+
+});
