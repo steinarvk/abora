@@ -275,7 +275,7 @@ function displayBackgroundSpectrogram(params) {
 }
 
 var currentOffset = 0;
-var currentDuration = 10;
+var currentDuration = 1000;
 
 var transformation = null;
 
