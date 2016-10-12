@@ -1,6 +1,6 @@
-.PHONY: all clean dependencies reader writer abora-studio
+.PHONY: all clean dependencies reader writer abora-studio mkchirp
 
-all: reader writer abora-studio
+all: reader writer abora-studio mkchirp
 
 reader:
 	go build github.com/steinarvk/abora/cmd/reader
@@ -10,6 +10,9 @@ writer:
 
 abora-studio:
 	go build github.com/steinarvk/abora/cmd/abora-studio
+
+mkchirp:
+	go build github.com/steinarvk/abora/cmd/mkchirp
 
 clean:
 	rm -f reader writer
