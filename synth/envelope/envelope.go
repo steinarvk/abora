@@ -1,7 +1,8 @@
 package envelope
 
 import (
-	"math"
+	"github.com/steinarvk/abora/synth/interpolation"
+	"github.com/steinarvk/abora/synth/varying"
 )
 
 // Envelope represents the amplitude component of a waveform. It takes on
@@ -47,54 +48,31 @@ var (
 	Identity = Constant(1)
 )
 
-type Point struct {
-	Time  float64
-	Value float64
-}
-
-func linearInterpolation(t, x0, x1 float64) float64 {
-	return x0 + t*(x1-x0)
-}
-
-func cosInterpolation(t, x0, x1 float64) float64 {
-	v := 1.0 - math.Cos(t*math.Pi*0.5)
-	return linearInterpolation(v, x0, x1)
-}
-
-type Interpolator func(float64, float64, float64) float64
-
-type interpolatedEnvelope struct {
-	points       []Point
-	interpolator Interpolator
-	cyclic       bool
-	finite       bool
-	t            float64
-	index        int
-}
-
-func sectionAttackSustain(attackDur, stabilizeDur float64, sustainLevel float64, interpolator Interpolator) Envelope {
-	return &interpolatedEnvelope{
-		points: []Point{
+func sectionAttackSustain(attackDur, stabilizeDur float64, sustainLevel float64, interpolator interpolation.Function) Envelope {
+	return &interpolatedEnvelope{amplitude: varying.NewInterpolated(
+		[]varying.Point{
 			{Time: 0, Value: 0},
 			{Time: attackDur, Value: 1.0},
 			{Time: attackDur + stabilizeDur, Value: sustainLevel},
 		},
-		interpolator: Interpolator(interpolator),
-		cyclic:       false,
-		finite:       false,
-	}
+		varying.Interpolation(interpolator),
+		varying.Infinite{},
+	)}
 }
 
-func sectionRelease(beforeReleaseDur, releaseDur float64, interpol Interpolator) Envelope {
-	return &interpolatedEnvelope{
-		points: []Point{
+func sectionRelease(beforeReleaseDur, releaseDur float64, interpol interpolation.Function) Envelope {
+	vary := varying.NewInterpolated(
+		[]varying.Point{
 			{Time: 0, Value: 1},
 			{Time: beforeReleaseDur, Value: 1},
 			{Time: beforeReleaseDur + releaseDur, Value: 0},
 		},
-		interpolator: Interpolator(interpol),
-		cyclic:       false,
-		finite:       true,
+		varying.Interpolation(interpol),
+	)
+	return &interpolatedEnvelope{
+		amplitude: vary,
+		timeLeft:  beforeReleaseDur + releaseDur,
+		finite:    true,
 	}
 }
 
@@ -106,14 +84,14 @@ type ADSRSpec struct {
 }
 
 func LinearADSR(totalDuration float64, spec ADSRSpec) Envelope {
-	return adsrWith(spec, totalDuration, linearInterpolation)
+	return adsrWith(spec, totalDuration, interpolation.Linear)
 }
 
 func CosADSR(totalDuration float64, spec ADSRSpec) Envelope {
-	return adsrWith(spec, totalDuration, cosInterpolation)
+	return adsrWith(spec, totalDuration, interpolation.Cosine)
 }
 
-func adsrWith(spec ADSRSpec, totalDuration float64, interpol Interpolator) Envelope {
+func adsrWith(spec ADSRSpec, totalDuration float64, interpol interpolation.Function) Envelope {
 	beforeReleaseDur := totalDuration - spec.ReleaseDuration
 	if beforeReleaseDur < 0 {
 		beforeReleaseDur = 0
@@ -131,63 +109,28 @@ func adsrWith(spec ADSRSpec, totalDuration float64, interpol Interpolator) Envel
 	)
 }
 
-func (e *interpolatedEnvelope) Amplitude() float64 {
-	n := len(e.points)
-	if n == 0 {
+type interpolatedEnvelope struct {
+	amplitude varying.Varying
+	finite    bool
+	timeLeft  float64
+}
+
+func (x *interpolatedEnvelope) Amplitude() float64 {
+	if x.Done() {
 		return 0.0
 	}
-	lastTime := e.points[n-1].Time
-	if e.t >= lastTime {
-		if e.finite {
-			return 0.0
-		}
-		return e.points[n-1].Value
-	}
-	v0 := e.points[e.index].Value
-	v1 := e.points[e.index+1].Value
-	if v0 == v1 {
-		return v0
-	}
-	t0 := e.points[e.index].Time
-	t1 := e.points[e.index+1].Time
-	return e.interpolator((e.t-t0)/(t1-t0), v0, v1)
+	return x.amplitude.Value()
 }
 
-func (e *interpolatedEnvelope) Advance(dt float64) {
-	n := len(e.points)
-	if n == 0 {
-		return
-	}
-	lastTime := e.points[n-1].Time
-	e.t += dt
-	if e.t >= lastTime && !e.cyclic {
-		return
-	}
-	for {
-		for (e.index+1) < n && e.t >= e.points[e.index+1].Time {
-			e.index++
-		}
-		if (e.index + 1) >= n {
-			if e.finite {
-				return
-			}
-			e.index = 0
-			e.t -= lastTime
-		} else {
-			return
-		}
+func (x *interpolatedEnvelope) Advance(dt float64) {
+	x.amplitude.Advance(dt)
+	if x.finite {
+		x.timeLeft -= dt
 	}
 }
 
-func (e *interpolatedEnvelope) Done() bool {
-	n := len(e.points)
-	if e.cyclic || !e.finite {
-		return false
-	}
-	if n < 1 {
-		return false
-	}
-	return e.t > e.points[n-1].Time
+func (x *interpolatedEnvelope) Done() bool {
+	return x.finite && x.timeLeft <= 0
 }
 
 type compositeEnvelope []Envelope

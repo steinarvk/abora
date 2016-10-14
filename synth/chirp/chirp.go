@@ -3,6 +3,7 @@ package chirp
 import (
 	"github.com/steinarvk/abora/synth/envelope"
 	"github.com/steinarvk/abora/synth/oscillator"
+	"github.com/steinarvk/abora/synth/varying"
 )
 
 type TremoloEnvelope struct {
@@ -22,26 +23,32 @@ func (e *TremoloEnvelope) Amplitude() float64 {
 }
 
 type Chirp struct {
-	osc      oscillator.Oscillator
-	env      envelope.Envelope
-	baseFreq float64
+	osc     oscillator.Oscillator
+	env     envelope.Envelope
+	freq    varying.Varying
+	tremolo varying.Varying
 }
 
 func (c *Chirp) Sample() float64 {
-	return c.osc.Value() * c.env.Amplitude()
+	rv := c.osc.Value()
+	rv *= c.env.Amplitude()
+	if c.tremolo != nil {
+		rv *= c.tremolo.Value()
+	}
+	return rv
 }
 
 func (c *Chirp) Done() bool {
 	return c.env.Done()
 }
 
-func (c *Chirp) freq() float64 {
-	return c.baseFreq
-}
-
 func (c *Chirp) Advance(dt float64) {
-	c.osc.Advance(c.freq() * dt)
+	c.osc.Advance(c.freq.Value() * dt)
 	c.env.Advance(dt)
+	c.freq.Advance(dt)
+	if c.tremolo != nil {
+		c.tremolo.Advance(dt)
+	}
 }
 
 func (c *Chirp) AsChannel(sampleRate int) <-chan float64 {
@@ -58,8 +65,12 @@ func (c *Chirp) AsChannel(sampleRate int) <-chan float64 {
 	return ch
 }
 
-func New(freq float64, osc oscillator.Oscillator, env envelope.Envelope) *Chirp {
-	return &Chirp{osc, env, freq}
+func New(freq varying.Varying, osc oscillator.Oscillator, env envelope.Envelope) *Chirp {
+	return &Chirp{
+		osc:  osc,
+		env:  env,
+		freq: freq,
+	}
 }
 
 // essential operations and how to achieve them:

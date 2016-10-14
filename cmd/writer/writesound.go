@@ -29,6 +29,7 @@ var (
 	tremoloIntensity       = flag.Float64("tremolo_intensity", 0, "intensity of tremolo")
 	vibratoFrequency       = flag.Float64("vibrato_frequency", 5, "frequency of vibrato")
 	expectPixels           = flag.Bool("pixel_input", true, "expect input in the form of pixels")
+	flattenWithin          = flag.Float64("flatten_within", 0, "flatten frequency changes within")
 )
 
 type soundPoint struct {
@@ -174,6 +175,8 @@ func parseAdHocFormat(filename string) ([]sound, error) {
 
 		var snd sound
 
+		var lastFreq *float64
+
 		for componentno, comp := range components {
 			xAndY := strings.Split(comp, ":")
 			if len(xAndY) != 2 {
@@ -201,6 +204,14 @@ func parseAdHocFormat(filename string) ([]sound, error) {
 			}
 			if freq < *lowFrequency || freq > *highFrequency {
 				return nil, fmt.Errorf("line %d: component %q has non-sensible frequency (%f)", lineno, comp, freq)
+			}
+
+			if *flattenWithin > 0 {
+				if lastFreq != nil && (freq-*lastFreq) < *flattenWithin {
+					freq = *lastFreq
+				} else {
+					lastFreq = &freq
+				}
 			}
 
 			if componentno == 0 {
