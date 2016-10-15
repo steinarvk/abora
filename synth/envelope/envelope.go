@@ -1,6 +1,8 @@
 package envelope
 
 import (
+	"log"
+
 	"github.com/steinarvk/abora/synth/interpolation"
 	"github.com/steinarvk/abora/synth/varying"
 )
@@ -61,6 +63,7 @@ func sectionAttackSustain(attackDur, stabilizeDur float64, sustainLevel float64,
 }
 
 func sectionRelease(beforeReleaseDur, releaseDur float64, interpol interpolation.Function) Envelope {
+	log.Printf("release: before %v release %v", beforeReleaseDur, releaseDur)
 	vary := varying.NewInterpolated(
 		[]varying.Point{
 			{Time: 0, Value: 1},

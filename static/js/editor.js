@@ -80,13 +80,15 @@ function createLineseg(x, y) {
   }
 
   rv.remove = function() {
+    console.log("removing element. There are " + fullModel.length + " elements");
     dots.forEach(function(dot) {
       dot.remove();
     });
     lines.forEach(function(line) {
       line.remove();
     });
-    fullModel.remove(rv);
+    fullModel = _.without(fullModel, rv);
+    console.log("removed element. There are " + fullModel.length + " elements");
   }
 
   rv.setUnselected = function() {
@@ -313,13 +315,14 @@ $("body").append($("<button/>").text("Back").click(function() {
 
 $("body").append($("<textarea id='dump'/>"));
 
-$("body").append($("<button/>").text("Dump")).click(function() {
+$("body").append($("<button/>").text("Dump").click(function() {
+  console.log("dump button was clicked");
   var rv = [];
   fullModel.forEach(function(x) {
     rv.push(x.toStringForm(transformation));
   });
   $("#dump").text(rv.join("\n"));
-});
+}));
 
 refreshView();
 

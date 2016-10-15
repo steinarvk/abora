@@ -1,10 +1,11 @@
 package analysis
 
 import (
-	"github.com/steinarvk/abora/snippet"
-	"github.com/steinarvk/abora/stats"
 	"log"
 	"math"
+
+	"github.com/steinarvk/abora/snippet"
+	"github.com/steinarvk/abora/stats"
 
 	"github.com/mjibson/go-dsp/spectral"
 )
@@ -12,6 +13,10 @@ import (
 type FrequencyRange struct {
 	LowHz  float64
 	HighHz float64
+}
+
+func (x FrequencyRange) Midpoint() float64 {
+	return 0.5 * (x.LowHz + x.HighHz)
 }
 
 type Params struct {
@@ -166,6 +171,10 @@ func normalizeParams(s snippet.Snippet, params *Params) error {
 		params.PwelchPadding = defaultParams.PwelchPadding
 	}
 
+	if params.NumberOfFrequencyBuckets == 0 {
+		params.NumberOfFrequencyBuckets = defaultParams.NumberOfFrequencyBuckets
+	}
+
 	return nil
 }
 
@@ -175,6 +184,12 @@ func (a *Analysis) pwelchOpts() *spectral.PwelchOptions {
 	}
 	if a.Params.PwelchPadding != nil {
 		rv.Pad = *a.Params.PwelchPadding
+	}
+
+	if rv.Pad != 0 && rv.Pad < rv.NFFT {
+		log.Printf("error: PwelchOptions: Pad (%v) must not be smaller than NFFT (%v)", rv.Pad, rv.NFFT)
+		rv.Pad = rv.NFFT
+		log.Printf("error: PwelchOptions: correction applied: Pad (%v) NFFT (%v)", rv.Pad, rv.NFFT)
 	}
 	return rv
 }
@@ -210,6 +225,7 @@ func (a *LoudnessAnalysis) addPoint(_ int64, frames []float64) error {
 }
 
 func (a *Analysis) addPoint(sampleNo int64, frames []float64) error {
+	//	log.Printf("performing spectral.Pwelch([...%d...], %v, %v)", len(frames), a.SampleRate, a.pwelchOpts())
 	pxx, freqs := spectral.Pwelch(frames, float64(a.SampleRate), a.pwelchOpts())
 	point, err := a.newPoint(int(sampleNo), pxx, freqs)
 	if err != nil {

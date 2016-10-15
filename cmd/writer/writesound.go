@@ -5,148 +5,97 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"math"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/cryptix/wav"
+	"github.com/steinarvk/abora/synth/chirp"
+	"github.com/steinarvk/abora/synth/envelope"
+	"github.com/steinarvk/abora/synth/harmonics"
+	"github.com/steinarvk/abora/synth/interpolation"
+	"github.com/steinarvk/abora/synth/mix"
+	"github.com/steinarvk/abora/synth/oscillator"
+	"github.com/steinarvk/abora/synth/varying"
+	"github.com/steinarvk/abora/wav"
 )
 
 var (
-	inputFile              = flag.String("input", "", "input filename")
-	outputFile             = flag.String("output", "", "output filename")
-	lowFrequency           = flag.Float64("low_freq", 500.0, "lowest frequency of interest")
-	highFrequency          = flag.Float64("high_freq", 5000.0, "highest frequency of interest")
-	pixelsPerSecond        = flag.Float64("pixels_per_second", 1329, "pixels per second")
-	imageHeight            = flag.Float64("image_height", 1000, "image height")
-	freqMultiplier         = flag.Float64("freq_multiplier", 1.0, "frequency multiplier")
-	speedMultiplier        = flag.Float64("speed_multiplier", 1.0, "speed multiplier")
-	silenceSpeedMultiplier = flag.Float64("silence_speed_multiplier", 1.0, "silence speed multiplier")
-	harmonics              = flag.Int("harmonics", 1, "number of harmonics in output")
-	harmonicsFalloffPower  = flag.Float64("harmonics_falloff_power", 2, "power of amplitude falloff of harmonics")
-	vibratoIntensity       = flag.Float64("vibrato_intensity", 0, "intensity of vibrato (multiplier for base frequency)")
-	tremoloIntensity       = flag.Float64("tremolo_intensity", 0, "intensity of tremolo")
-	vibratoFrequency       = flag.Float64("vibrato_frequency", 5, "frequency of vibrato")
-	expectPixels           = flag.Bool("pixel_input", true, "expect input in the form of pixels")
-	flattenWithin          = flag.Float64("flatten_within", 0, "flatten frequency changes within")
-)
+	inputFile       = flag.String("input", "", "input filename")
+	outputFile      = flag.String("output", "", "output filename")
+	pixelsPerSecond = flag.Float64("pixels_per_second", 1329, "pixels per second")
+	imageHeight     = flag.Float64("image_height", 1000, "image height")
+	expectPixels    = flag.Bool("pixel_input", true, "expect input in the form of pixels")
+	flattenWithin   = flag.Float64("flatten_within", 0, "flatten frequency changes within")
+	lowFrequency    = flag.Float64("low_freq", 500.0, "lowest frequency of interest")
+	highFrequency   = flag.Float64("high_freq", 5000.0, "highest frequency of interest")
 
-type soundPoint struct {
-	t    float64
-	freq float64
-}
+	amplitude         = flag.Float64("amplitude", 0.25, "amplitude")
+	freqMultiplier    = flag.Float64("freq_multiplier", 1.0, "frequency multiplier")
+	timeMultiplier    = flag.Float64("time_multiplier", 1.0, "time multiplier")
+	numberOfHarmonics = flag.Int("harmonics", 0, "number of additional harmonics")
+	harmonicsFalloff  = flag.Float64("harmonics_falloff", 2.0, "power of harmonics falloff")
+	vibratoIntensity  = flag.Float64("vibrato_intensity", 0.0, "intensity of vibrato")
+	vibratoFrequency  = flag.Float64("vibrato_frequency", 7.0, "vibrato frequency")
+	tremoloIntensity  = flag.Float64("tremolo_intensity", 0.0, "intensity of vibrato")
+	tremoloFrequency  = flag.Float64("tremolo_frequency", 7.0, "vibrato frequency")
+)
 
 type sound struct {
 	begin  float64
 	end    float64
-	points []soundPoint
-}
-
-func (s soundPoint) String() string {
-	return fmt.Sprintf("%0.2fs:%0.2fHz", s.t, s.freq)
+	points []varying.Point
 }
 
 func (s sound) String() string {
 	var xs []string
 	for _, x := range s.points {
-		xs = append(xs, x.String())
+		xs = append(xs, fmt.Sprintf("%0.2fs:%0.2fHz", x.Time, x.Value))
 	}
 	return strings.Join(xs, "-")
 }
 
-type soundInst struct {
-	playing    bool
-	timeSpent  float64
-	u          float64
-	s          *sound
-	env        *asdr
-	tremoloMul float64
-}
+func (s sound) asChirp() chirp.TimedChirp {
+	duration := (s.end - s.begin) * *timeMultiplier
+	osc := oscillator.Sin()
 
-type asdr struct {
-	attack, decay float64
-	attackTime    float64
-	decayTime     float64
-	releaseTime   float64
-	totalTime     float64
-}
+	log.Printf("total duration %v", duration)
 
-func (a *asdr) value(t float64) float64 {
-	if t < a.attackTime {
-		return t / a.attackTime * a.attack
+	env := envelope.LinearADSR(duration, envelope.ADSRSpec{
+		AttackDuration:  0.05,
+		DecayDuration:   0.05,
+		SustainLevel:    0.7,
+		ReleaseDuration: 0.05,
+	})
+	env = envelope.Composite(env, envelope.Constant(*amplitude))
+	freq := varying.NewInterpolated(s.points, varying.Interpolation(interpolation.Cosine))
+
+	if *numberOfHarmonics > 0 {
+		osc = harmonics.WithHarmonics(osc,
+			harmonics.SimpleSeq(*numberOfHarmonics+1, *harmonicsFalloff))
 	}
 
-	if (a.totalTime - t) < a.releaseTime {
-		return a.decay * (a.totalTime - t) / a.releaseTime
+	if *vibratoIntensity > 0.0 {
+		freq = varying.NewOscillating(
+			freq,
+			varying.OscillationFreq(varying.Constant(*vibratoFrequency)),
+			varying.MultiplicativeOscillation(varying.Constant(*vibratoIntensity)),
+		)
 	}
 
-	t -= a.attackTime
-
-	if t < a.decayTime {
-		return a.attack + t/a.decayTime*(a.decay-a.attack)
-	}
-	t -= a.decayTime
-
-	return a.decay
-}
-
-func newASDR(totalTime float64) *asdr {
-	return &asdr{
-		attack:      1.0,
-		decay:       0.8,
-		attackTime:  0.05,
-		decayTime:   0.05,
-		releaseTime: 0.05,
-		totalTime:   totalTime,
-	}
-}
-
-func (s sound) play() *soundInst {
-	return &soundInst{true, 0.0, 0.0, &s, newASDR(s.end - s.begin), 1.0}
-}
-
-func (s *soundInst) freq() float64 {
-	t := s.timeSpent + s.s.begin
-	for i := range s.s.points[:len(s.s.points)-1] {
-		if s.s.points[i].t <= t && t <= s.s.points[i+1].t {
-			rt := (t - s.s.points[i].t) / (s.s.points[i+1].t - s.s.points[i].t)
-			return (s.s.points[i].freq + rt*(s.s.points[i+1].freq-s.s.points[i].freq))
-		}
-	}
-	return s.s.points[0].freq
-}
-
-func (s *soundInst) value() float64 {
-	if !s.playing {
-		return 0.0
-	}
-	a := 0.15 * s.env.value(s.timeSpent) * s.tremoloMul
-	var rv float64
-	for i := 1; i <= *harmonics; i++ {
-		rv += math.Sin(s.u*float64(i)) / math.Pow(float64(i), *harmonicsFalloffPower)
-	}
-	return a * rv
-}
-
-func (s *soundInst) addTime(dt float64) {
-	s.timeSpent += dt
-	if s.timeSpent >= (s.s.end - s.s.begin) {
-		s.playing = false
-		return
+	if *tremoloIntensity > 0.0 {
+		log.Fatalf("TODO: tremolo")
 	}
 
-	correction := *freqMultiplier / *speedMultiplier
-	baseFreq := s.freq()
-	freq := baseFreq
-	if *vibratoIntensity > 0 || *tremoloIntensity > 0 {
-		v := math.Sin(*vibratoFrequency * s.timeSpent * (math.Pi * 2.0))
-		vibratoMul := *vibratoIntensity * v
-		s.tremoloMul = 1.0 + *tremoloIntensity*v
-		freq += vibratoMul * baseFreq
-	}
+	freq = varying.Map(freq, func(t float64) float64 {
+		return t * *freqMultiplier
+	})
 
-	s.u += math.Pi * freq * dt * correction
+	log.Printf("this chirp is timed for %v", s.begin)
+
+	return chirp.TimedChirp{
+		Time:  s.begin * *timeMultiplier,
+		Chirp: chirp.New(freq, osc, env),
+	}
 }
 
 func parseAdHocFormat(filename string) ([]sound, error) {
@@ -222,9 +171,9 @@ func parseAdHocFormat(filename string) ([]sound, error) {
 					return nil, fmt.Errorf("line %d: component %q is moving backwards (%f < %f)", lineno, comp, secs, snd.end)
 				}
 			}
-			snd.points = append(snd.points, soundPoint{
-				t:    secs,
-				freq: freq,
+			snd.points = append(snd.points, varying.Point{
+				Time:  secs,
+				Value: freq,
 			})
 			snd.end = secs
 		}
@@ -247,7 +196,7 @@ func parseAdHocFormat(filename string) ([]sound, error) {
 			rv[i].begin -= minTime
 			rv[i].end -= minTime
 			for j, _ := range snd.points {
-				rv[i].points[j].t -= minTime
+				rv[i].points[j].Time -= minTime
 			}
 		}
 	}
@@ -255,80 +204,12 @@ func parseAdHocFormat(filename string) ([]sound, error) {
 	return rv, nil
 }
 
-func playSounds(sounds []sound, step float64) <-chan float64 {
-	ch := make(chan float64, 1024)
-	go func() {
-		t := 0.0
-		var activeSounds []*soundInst
-		already := map[int]bool{}
-
-		for len(activeSounds) > 0 || len(already) < len(sounds) {
-			for i, sound := range sounds {
-				if already[i] {
-					continue
-				}
-				if t >= sound.begin {
-					already[i] = true
-					activeSounds = append(activeSounds, sound.play())
-				}
-			}
-
-			var v float64
-			var nextActive []*soundInst
-			for _, s := range activeSounds {
-				v += s.value()
-				s.addTime(step)
-				if s.playing {
-					nextActive = append(nextActive, s)
-				}
-			}
-			activeSounds = nextActive
-
-			ch <- v
-
-			if len(activeSounds) == 0 {
-				t += *silenceSpeedMultiplier * step
-			} else {
-				t += step
-			}
-		}
-
-		close(ch)
-	}()
-
-	return ch
-}
-
-func writeWav(filename string, sampleRate int, ch <-chan float64) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return err
+func playSounds(sounds []sound, sampleRate int) <-chan float64 {
+	var tc []chirp.TimedChirp
+	for _, snd := range sounds {
+		tc = append(tc, snd.asChirp())
 	}
-
-	wavFile := &wav.File{
-		SampleRate:      uint32(sampleRate),
-		SignificantBits: 32,
-		Channels:        1,
-	}
-	wr, err := wavFile.NewWriter(f)
-	if err != nil {
-		f.Close()
-		return err
-	}
-
-	for x := range ch {
-		val := int32(float64(2147483648) * x)
-		if err := wr.WriteInt32(val); err != nil {
-			f.Close()
-			return err
-		}
-	}
-
-	if err := wr.Close(); err != nil {
-		return err
-	}
-
-	return nil
+	return mix.AsChannel(tc, sampleRate, 0.0)
 }
 
 func mainCore() error {
@@ -343,13 +224,7 @@ func mainCore() error {
 
 	sampleRate := 44100
 
-	step := *speedMultiplier / float64(sampleRate)
-
-	if err := writeWav(*outputFile, sampleRate, playSounds(sounds, step)); err != nil {
-		return err
-	}
-
-	return nil
+	return wav.WriteFile(*outputFile, sampleRate, playSounds(sounds, sampleRate))
 }
 
 func main() {

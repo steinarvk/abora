@@ -17,3 +17,23 @@ func Advance(dt float64, xs ...Varying) {
 		}
 	}
 }
+
+type mappedVarying struct {
+	f func(float64) float64
+	u Varying
+}
+
+func (m *mappedVarying) Value() float64 {
+	return m.f(m.u.Value())
+}
+
+func (m *mappedVarying) Advance(dt float64) {
+	m.u.Advance(dt)
+}
+
+func Map(u Varying, f func(float64) float64) Varying {
+	return &mappedVarying{
+		f: f,
+		u: u,
+	}
+}

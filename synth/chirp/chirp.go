@@ -22,14 +22,32 @@ func (e *TremoloEnvelope) Amplitude() float64 {
 	return remaining
 }
 
-type Chirp struct {
+type Chirp interface {
+	Sample() float64
+	Done() bool
+	Advance(float64)
+}
+
+type TimedChirp struct {
+	Time  float64
+	Chirp Chirp
+}
+
+func At(t float64, chirp Chirp) TimedChirp {
+	return TimedChirp{
+		Time:  t,
+		Chirp: chirp,
+	}
+}
+
+type chirp struct {
 	osc     oscillator.Oscillator
 	env     envelope.Envelope
 	freq    varying.Varying
 	tremolo varying.Varying
 }
 
-func (c *Chirp) Sample() float64 {
+func (c *chirp) Sample() float64 {
 	rv := c.osc.Value()
 	rv *= c.env.Amplitude()
 	if c.tremolo != nil {
@@ -38,11 +56,11 @@ func (c *Chirp) Sample() float64 {
 	return rv
 }
 
-func (c *Chirp) Done() bool {
+func (c *chirp) Done() bool {
 	return c.env.Done()
 }
 
-func (c *Chirp) Advance(dt float64) {
+func (c *chirp) Advance(dt float64) {
 	c.osc.Advance(c.freq.Value() * dt)
 	c.env.Advance(dt)
 	c.freq.Advance(dt)
@@ -51,22 +69,8 @@ func (c *Chirp) Advance(dt float64) {
 	}
 }
 
-func (c *Chirp) AsChannel(sampleRate int) <-chan float64 {
-	bufsz := sampleRate
-	ch := make(chan float64, bufsz)
-	step := 1.0 / float64(sampleRate)
-	go func() {
-		for !c.Done() {
-			c.Advance(step)
-			ch <- c.Sample()
-		}
-		close(ch)
-	}()
-	return ch
-}
-
-func New(freq varying.Varying, osc oscillator.Oscillator, env envelope.Envelope) *Chirp {
-	return &Chirp{
+func New(freq varying.Varying, osc oscillator.Oscillator, env envelope.Envelope) Chirp {
+	return &chirp{
 		osc:  osc,
 		env:  env,
 		freq: freq,

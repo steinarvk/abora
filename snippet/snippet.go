@@ -3,6 +3,7 @@ package snippet
 
 import (
 	"errors"
+	"log"
 	"os"
 
 	"azul3d.org/engine/audio"
@@ -90,6 +91,8 @@ func Read(filename string) (Snippet, error) {
 	if config.Channels != 1 {
 		return nil, errors.New("expected mono input")
 	}
+
+	log.Printf("reading FLAC input from %q: sample rate %v (full config %v)", filename, config.SampleRate, config)
 
 	seconds := 1
 	bufsize := seconds * config.SampleRate

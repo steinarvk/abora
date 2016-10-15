@@ -8,6 +8,7 @@ import (
 	"github.com/steinarvk/abora/synth/chirp"
 	"github.com/steinarvk/abora/synth/envelope"
 	"github.com/steinarvk/abora/synth/harmonics"
+	"github.com/steinarvk/abora/synth/mix"
 	"github.com/steinarvk/abora/synth/oscillator"
 	"github.com/steinarvk/abora/synth/varying"
 	"github.com/steinarvk/abora/wav"
@@ -60,7 +61,12 @@ func mainCore() error {
 
 	sampleRate := 44110
 
-	return wav.WriteFile(*outputFilename, sampleRate, chirp.New(freq, osc, env).AsChannel(sampleRate))
+	ch := mix.AsChannel(
+		[]chirp.TimedChirp{chirp.At(0.0, chirp.New(freq, osc, env))},
+		sampleRate,
+		0.0)
+
+	return wav.WriteFile(*outputFilename, sampleRate, ch)
 }
 
 func main() {

@@ -30,17 +30,29 @@ type Cyclic struct{}
 
 func (_ Cyclic) Apply(rv *interpolatedVarying) {
 	rv.cyclic = true
-	rv.infinite = true
 }
 
 type Infinite struct{}
 
 func (_ Infinite) Apply(rv *interpolatedVarying) { rv.infinite = true }
 
+func normalizePoints(points []Point) []Point {
+	if len(points) < 1 {
+		return nil
+	}
+	t0 := points[0].Time
+	var rv []Point
+	for _, p := range points {
+		rv = append(rv, Point{Time: p.Time - t0, Value: p.Value})
+	}
+	return rv
+}
+
 func NewInterpolated(points []Point, opts ...interpolatedOption) Varying {
 	rv := &interpolatedVarying{
-		points:       points,
+		points:       normalizePoints(points),
 		interpolator: interpolation.Linear,
+		infinite:     true,
 	}
 	for _, opt := range opts {
 		opt.Apply(rv)
