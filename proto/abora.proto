@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package aborapb;
+
+message DoubleOrHold {
+  oneof ValueOrHold {
+    double value = 1;
+    bool hold = 2;
+  }
+}
+
+message NoOptions {}
+
+message Oscillator {
+  oneof Oscillators {
+    NoOptions sine = 1;
+    NoOptions square = 2;
+  }
+}
+
+message OscillatorOrHold {
+  oneof ValueOrHold {
+    Oscillator oscillator = 1;
+    bool hold = 2;
+  }
+}
+
+message PointSettings {
+  DoubleOrHold freq = 1;
+  DoubleOrHold amplitude = 2;
+  DoubleOrHold tremolo_strength = 3;
+  DoubleOrHold tremolo_freq = 4;
+  DoubleOrHold vibrato_strength = 5;
+  DoubleOrHold vibrato_freq = 6;
+  OscillatorOrHold oscillator = 7;
+}
+
+message Point {
+  // Relative time; first should be 0. Must be ascending.
+  double t = 1;
+
+  PointSettings settings = 2;
+}
+
+message ADSREnvelope {
+  double attack_duration = 1;
+  double decay_duration = 2;
+  double release_duration = 3;
+  double sustain_level = 4;
+}
+
+message Envelope {
+  oneof EnvelopeKind {
+    ADSREnvelope adsr = 1;
+  }
+}
+
+message Defaults {
+  PointSettings initial = 1;
+  Envelope envelope = 2;
+}
+
+message Chirp {
+  double begin_time = 1;
+  double duration = 2;
+
+  repeated Point points = 3;
+
+  Defaults defaults_override = 4;
+}
+
+message Chirps {
+  repeated Chirp chirp = 1;
+  Defaults defaults = 2;
+}

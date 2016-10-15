@@ -1,6 +1,6 @@
-.PHONY: all clean dependencies reader writer abora-studio mkchirp
+.PHONY: all clean dependencies reader writer abora-studio mkchirp protos
 
-all: reader writer abora-studio mkchirp
+all: protos reader writer abora-studio mkchirp
 
 reader:
 	go build github.com/steinarvk/abora/cmd/reader
@@ -13,6 +13,9 @@ abora-studio:
 
 mkchirp:
 	go build github.com/steinarvk/abora/cmd/mkchirp
+
+protos:
+	protoc proto/abora.proto --go_out=.
 
 clean:
 	rm -f reader writer
