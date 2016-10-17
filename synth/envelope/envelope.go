@@ -164,3 +164,34 @@ func (c compositeEnvelope) Amplitude() float64 {
 	}
 	return value
 }
+
+type withVaryings struct {
+	env  Envelope
+	vary []varying.Varying
+}
+
+func WithVarying(env Envelope, components ...varying.Varying) Envelope {
+	return &withVaryings{
+		env:  env,
+		vary: components,
+	}
+}
+
+func (e *withVaryings) Advance(dt float64) {
+	e.env.Advance(dt)
+	for _, v := range e.vary {
+		v.Advance(dt)
+	}
+}
+
+func (e *withVaryings) Done() bool {
+	return e.env.Done()
+}
+
+func (e *withVaryings) Amplitude() float64 {
+	rv := e.env.Amplitude()
+	for _, v := range e.vary {
+		rv *= v.Value()
+	}
+	return rv
+}

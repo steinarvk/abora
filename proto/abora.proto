@@ -2,6 +2,20 @@ syntax = "proto3";
 
 package aborapb;
 
+message SpectrumPoint {
+  double amplitude = 1;
+  double frequency = 2;
+  double phase = 5;
+
+  double low_frequency = 3;
+  double high_frequency = 4;
+}
+
+message Spectrum {
+  repeated SpectrumPoint points = 1;
+  double nominal_frequency = 2;
+}
+
 message DoubleOrHold {
   oneof ValueOrHold {
     double value = 1;
@@ -18,13 +32,6 @@ message Oscillator {
   }
 }
 
-message OscillatorOrHold {
-  oneof ValueOrHold {
-    Oscillator oscillator = 1;
-    bool hold = 2;
-  }
-}
-
 message PointSettings {
   DoubleOrHold freq = 1;
   DoubleOrHold amplitude = 2;
@@ -32,7 +39,6 @@ message PointSettings {
   DoubleOrHold tremolo_freq = 4;
   DoubleOrHold vibrato_strength = 5;
   DoubleOrHold vibrato_freq = 6;
-  OscillatorOrHold oscillator = 7;
 }
 
 message Point {
@@ -55,9 +61,10 @@ message Envelope {
   }
 }
 
-message Defaults {
+message Context {
   PointSettings initial = 1;
   Envelope envelope = 2;
+  Oscillator oscillator = 3;
 }
 
 message Chirp {
@@ -66,10 +73,10 @@ message Chirp {
 
   repeated Point points = 3;
 
-  Defaults defaults_override = 4;
+  Context context_override = 4;
 }
 
 message Chirps {
   repeated Chirp chirp = 1;
-  Defaults defaults = 2;
+  Context defaults = 2;
 }

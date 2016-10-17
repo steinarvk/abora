@@ -27,6 +27,10 @@ func (v *ValueCollection) Min() float64 {
 	return v.Quantile(0)
 }
 
+func (v *ValueCollection) Median() float64 {
+	return v.Quantile(0.5)
+}
+
 func (v *ValueCollection) Add(x float64) {
 	v.mutex.Lock()
 	defer v.mutex.Unlock()

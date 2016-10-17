@@ -3,10 +3,12 @@ package analysis
 import (
 	"log"
 	"math"
+	"math/cmplx"
 
 	"github.com/steinarvk/abora/snippet"
 	"github.com/steinarvk/abora/stats"
 
+	"github.com/mjibson/go-dsp/fft"
 	"github.com/mjibson/go-dsp/spectral"
 )
 
@@ -26,6 +28,7 @@ type Params struct {
 	Range                     *FrequencyRange
 	NumberOfFrequencyBuckets  int
 	PwelchPadding             *int
+	PerformPureFFT            bool
 }
 
 var (
@@ -44,11 +47,19 @@ var (
 	}
 )
 
+type PureFFTPoint struct {
+	Raw       []complex128
+	Freqs     []float64
+	Amplitude []float64
+	Phase     []float64
+}
+
 type AnalysisPoint struct {
 	FrameNumber int
 	Values      []float64
-	rawPXX      []float64
-	rawFreqs    []float64
+	RawPXX      []float64
+	RawFreqs    []float64
+	PureFFT     *PureFFTPoint
 }
 
 type Analysis struct {
@@ -197,12 +208,12 @@ func (a *Analysis) pwelchOpts() *spectral.PwelchOptions {
 func (a *Analysis) newPoint(sampleNo int, pxx, freqs []float64) (*AnalysisPoint, error) {
 	point := &AnalysisPoint{
 		FrameNumber: sampleNo,
-		rawPXX:      pxx,
-		rawFreqs:    freqs,
+		RawPXX:      pxx,
+		RawFreqs:    freqs,
 		Values:      make([]float64, len(a.FrequencyBuckets)),
 	}
 	for i, bucket := range a.FrequencyBuckets {
-		value := bucket.density(point.rawPXX, point.rawFreqs)
+		value := bucket.density(point.RawPXX, point.RawFreqs)
 		point.Values[i] = value
 		a.ValueStats.Add(value)
 	}
@@ -224,6 +235,27 @@ func (a *LoudnessAnalysis) addPoint(_ int64, frames []float64) error {
 	return nil
 }
 
+func calculatePureFFT(frames []float64, sampleRate int) *PureFFTPoint {
+	val := fft.FFTReal(frames)
+	N := len(frames)
+	rv := &PureFFTPoint{}
+	// Note FFTReal output is a "mirror image"; the last half contains no new information.
+	for k, x := range val[:len(val)/2] {
+		// k cycles per sampleRate samples
+		// e.g. if k=10 then 10 cycles per 44100 samples
+		// which is 10 cycles per second
+		// which is 10 Hz
+		freq := float64(k) * float64(sampleRate) / float64(N)
+		amp := cmplx.Abs(x) / float64(N)
+		phase := cmplx.Phase(x)
+		rv.Raw = append(rv.Raw, x)
+		rv.Freqs = append(rv.Freqs, freq)
+		rv.Amplitude = append(rv.Amplitude, amp)
+		rv.Phase = append(rv.Phase, phase)
+	}
+	return rv
+}
+
 func (a *Analysis) addPoint(sampleNo int64, frames []float64) error {
 	//	log.Printf("performing spectral.Pwelch([...%d...], %v, %v)", len(frames), a.SampleRate, a.pwelchOpts())
 	pxx, freqs := spectral.Pwelch(frames, float64(a.SampleRate), a.pwelchOpts())
@@ -231,7 +263,13 @@ func (a *Analysis) addPoint(sampleNo int64, frames []float64) error {
 	if err != nil {
 		return err
 	}
+
+	if a.Params.PerformPureFFT {
+		point.PureFFT = calculatePureFFT(frames, a.SampleRate)
+	}
+
 	a.Points = append(a.Points, point)
+
 	return nil
 }
 

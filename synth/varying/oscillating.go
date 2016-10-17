@@ -24,8 +24,6 @@ func (x *oscillatingVarying) Advance(dt float64) {
 func (x *oscillatingVarying) Value() float64 {
 	base := x.val.Value()
 
-	oscillation := x.osc.Value()
-
 	var delta float64
 	if x.additive != nil {
 		delta += x.additive.Value()
@@ -34,7 +32,12 @@ func (x *oscillatingVarying) Value() float64 {
 		delta += base * x.multiplicative.Value()
 	}
 
-	return base + delta*oscillation
+	if delta > 0.0 {
+		oscillation := x.osc.Value()
+		base += delta * oscillation
+	}
+
+	return base
 }
 
 type oscillatingOption interface {

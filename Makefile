@@ -1,12 +1,15 @@
-.PHONY: all clean dependencies reader writer abora-studio mkchirp protos
+.PHONY: all clean dependencies reader writer abora-studio mkchirp vowelscan protos
 
-all: protos reader writer abora-studio mkchirp
+all: protos reader writer abora-studio mkchirp vowelscan
 
 reader:
 	go build github.com/steinarvk/abora/cmd/reader
 
 writer:
 	go build github.com/steinarvk/abora/cmd/writer
+
+vowelscan:
+	go build github.com/steinarvk/abora/cmd/vowelscan
 
 abora-studio:
 	go build github.com/steinarvk/abora/cmd/abora-studio

@@ -9,15 +9,16 @@ It is generated from these files:
 	proto/abora.proto
 
 It has these top-level messages:
+	SpectrumPoint
+	Spectrum
 	DoubleOrHold
 	NoOptions
 	Oscillator
-	OscillatorOrHold
 	PointSettings
 	Point
 	ADSREnvelope
 	Envelope
-	Defaults
+	Context
 	Chirp
 	Chirps
 */
@@ -36,6 +37,36 @@ var _ = math.Inf
 // is compatible with the proto package it is being compiled against.
 const _ = proto.ProtoPackageIsVersion1
 
+type SpectrumPoint struct {
+	Amplitude     float64 `protobuf:"fixed64,1,opt,name=amplitude" json:"amplitude,omitempty"`
+	Frequency     float64 `protobuf:"fixed64,2,opt,name=frequency" json:"frequency,omitempty"`
+	Phase         float64 `protobuf:"fixed64,5,opt,name=phase" json:"phase,omitempty"`
+	LowFrequency  float64 `protobuf:"fixed64,3,opt,name=low_frequency" json:"low_frequency,omitempty"`
+	HighFrequency float64 `protobuf:"fixed64,4,opt,name=high_frequency" json:"high_frequency,omitempty"`
+}
+
+func (m *SpectrumPoint) Reset()                    { *m = SpectrumPoint{} }
+func (m *SpectrumPoint) String() string            { return proto.CompactTextString(m) }
+func (*SpectrumPoint) ProtoMessage()               {}
+func (*SpectrumPoint) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+
+type Spectrum struct {
+	Points           []*SpectrumPoint `protobuf:"bytes,1,rep,name=points" json:"points,omitempty"`
+	NominalFrequency float64          `protobuf:"fixed64,2,opt,name=nominal_frequency" json:"nominal_frequency,omitempty"`
+}
+
+func (m *Spectrum) Reset()                    { *m = Spectrum{} }
+func (m *Spectrum) String() string            { return proto.CompactTextString(m) }
+func (*Spectrum) ProtoMessage()               {}
+func (*Spectrum) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+
+func (m *Spectrum) GetPoints() []*SpectrumPoint {
+	if m != nil {
+		return m.Points
+	}
+	return nil
+}
+
 type DoubleOrHold struct {
 	// Types that are valid to be assigned to ValueOrHold:
 	//	*DoubleOrHold_Value
@@ -46,7 +77,7 @@ type DoubleOrHold struct {
 func (m *DoubleOrHold) Reset()                    { *m = DoubleOrHold{} }
 func (m *DoubleOrHold) String() string            { return proto.CompactTextString(m) }
 func (*DoubleOrHold) ProtoMessage()               {}
-func (*DoubleOrHold) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (*DoubleOrHold) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
 type isDoubleOrHold_ValueOrHold interface {
 	isDoubleOrHold_ValueOrHold()
@@ -157,7 +188,7 @@ type NoOptions struct {
 func (m *NoOptions) Reset()                    { *m = NoOptions{} }
 func (m *NoOptions) String() string            { return proto.CompactTextString(m) }
 func (*NoOptions) ProtoMessage()               {}
-func (*NoOptions) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (*NoOptions) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
 
 type Oscillator struct {
 	// Types that are valid to be assigned to Oscillators:
@@ -169,7 +200,7 @@ type Oscillator struct {
 func (m *Oscillator) Reset()                    { *m = Oscillator{} }
 func (m *Oscillator) String() string            { return proto.CompactTextString(m) }
 func (*Oscillator) ProtoMessage()               {}
-func (*Oscillator) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (*Oscillator) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
 type isOscillator_Oscillators interface {
 	isOscillator_Oscillators()
@@ -280,140 +311,19 @@ func _Oscillator_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
-type OscillatorOrHold struct {
-	// Types that are valid to be assigned to ValueOrHold:
-	//	*OscillatorOrHold_Oscillator
-	//	*OscillatorOrHold_Hold
-	ValueOrHold isOscillatorOrHold_ValueOrHold `protobuf_oneof:"ValueOrHold"`
-}
-
-func (m *OscillatorOrHold) Reset()                    { *m = OscillatorOrHold{} }
-func (m *OscillatorOrHold) String() string            { return proto.CompactTextString(m) }
-func (*OscillatorOrHold) ProtoMessage()               {}
-func (*OscillatorOrHold) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
-
-type isOscillatorOrHold_ValueOrHold interface {
-	isOscillatorOrHold_ValueOrHold()
-}
-
-type OscillatorOrHold_Oscillator struct {
-	Oscillator *Oscillator `protobuf:"bytes,1,opt,name=oscillator,oneof"`
-}
-type OscillatorOrHold_Hold struct {
-	Hold bool `protobuf:"varint,2,opt,name=hold,oneof"`
-}
-
-func (*OscillatorOrHold_Oscillator) isOscillatorOrHold_ValueOrHold() {}
-func (*OscillatorOrHold_Hold) isOscillatorOrHold_ValueOrHold()       {}
-
-func (m *OscillatorOrHold) GetValueOrHold() isOscillatorOrHold_ValueOrHold {
-	if m != nil {
-		return m.ValueOrHold
-	}
-	return nil
-}
-
-func (m *OscillatorOrHold) GetOscillator() *Oscillator {
-	if x, ok := m.GetValueOrHold().(*OscillatorOrHold_Oscillator); ok {
-		return x.Oscillator
-	}
-	return nil
-}
-
-func (m *OscillatorOrHold) GetHold() bool {
-	if x, ok := m.GetValueOrHold().(*OscillatorOrHold_Hold); ok {
-		return x.Hold
-	}
-	return false
-}
-
-// XXX_OneofFuncs is for the internal use of the proto package.
-func (*OscillatorOrHold) XXX_OneofFuncs() (func(msg proto.Message, b *proto.Buffer) error, func(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error), func(msg proto.Message) (n int), []interface{}) {
-	return _OscillatorOrHold_OneofMarshaler, _OscillatorOrHold_OneofUnmarshaler, _OscillatorOrHold_OneofSizer, []interface{}{
-		(*OscillatorOrHold_Oscillator)(nil),
-		(*OscillatorOrHold_Hold)(nil),
-	}
-}
-
-func _OscillatorOrHold_OneofMarshaler(msg proto.Message, b *proto.Buffer) error {
-	m := msg.(*OscillatorOrHold)
-	// ValueOrHold
-	switch x := m.ValueOrHold.(type) {
-	case *OscillatorOrHold_Oscillator:
-		b.EncodeVarint(1<<3 | proto.WireBytes)
-		if err := b.EncodeMessage(x.Oscillator); err != nil {
-			return err
-		}
-	case *OscillatorOrHold_Hold:
-		t := uint64(0)
-		if x.Hold {
-			t = 1
-		}
-		b.EncodeVarint(2<<3 | proto.WireVarint)
-		b.EncodeVarint(t)
-	case nil:
-	default:
-		return fmt.Errorf("OscillatorOrHold.ValueOrHold has unexpected type %T", x)
-	}
-	return nil
-}
-
-func _OscillatorOrHold_OneofUnmarshaler(msg proto.Message, tag, wire int, b *proto.Buffer) (bool, error) {
-	m := msg.(*OscillatorOrHold)
-	switch tag {
-	case 1: // ValueOrHold.oscillator
-		if wire != proto.WireBytes {
-			return true, proto.ErrInternalBadWireType
-		}
-		msg := new(Oscillator)
-		err := b.DecodeMessage(msg)
-		m.ValueOrHold = &OscillatorOrHold_Oscillator{msg}
-		return true, err
-	case 2: // ValueOrHold.hold
-		if wire != proto.WireVarint {
-			return true, proto.ErrInternalBadWireType
-		}
-		x, err := b.DecodeVarint()
-		m.ValueOrHold = &OscillatorOrHold_Hold{x != 0}
-		return true, err
-	default:
-		return false, nil
-	}
-}
-
-func _OscillatorOrHold_OneofSizer(msg proto.Message) (n int) {
-	m := msg.(*OscillatorOrHold)
-	// ValueOrHold
-	switch x := m.ValueOrHold.(type) {
-	case *OscillatorOrHold_Oscillator:
-		s := proto.Size(x.Oscillator)
-		n += proto.SizeVarint(1<<3 | proto.WireBytes)
-		n += proto.SizeVarint(uint64(s))
-		n += s
-	case *OscillatorOrHold_Hold:
-		n += proto.SizeVarint(2<<3 | proto.WireVarint)
-		n += 1
-	case nil:
-	default:
-		panic(fmt.Sprintf("proto: unexpected type %T in oneof", x))
-	}
-	return n
-}
-
 type PointSettings struct {
-	Freq            *DoubleOrHold     `protobuf:"bytes,1,opt,name=freq" json:"freq,omitempty"`
-	Amplitude       *DoubleOrHold     `protobuf:"bytes,2,opt,name=amplitude" json:"amplitude,omitempty"`
-	TremoloStrength *DoubleOrHold     `protobuf:"bytes,3,opt,name=tremolo_strength" json:"tremolo_strength,omitempty"`
-	TremoloFreq     *DoubleOrHold     `protobuf:"bytes,4,opt,name=tremolo_freq" json:"tremolo_freq,omitempty"`
-	VibratoStrength *DoubleOrHold     `protobuf:"bytes,5,opt,name=vibrato_strength" json:"vibrato_strength,omitempty"`
-	VibratoFreq     *DoubleOrHold     `protobuf:"bytes,6,opt,name=vibrato_freq" json:"vibrato_freq,omitempty"`
-	Oscillator      *OscillatorOrHold `protobuf:"bytes,7,opt,name=oscillator" json:"oscillator,omitempty"`
+	Freq            *DoubleOrHold `protobuf:"bytes,1,opt,name=freq" json:"freq,omitempty"`
+	Amplitude       *DoubleOrHold `protobuf:"bytes,2,opt,name=amplitude" json:"amplitude,omitempty"`
+	TremoloStrength *DoubleOrHold `protobuf:"bytes,3,opt,name=tremolo_strength" json:"tremolo_strength,omitempty"`
+	TremoloFreq     *DoubleOrHold `protobuf:"bytes,4,opt,name=tremolo_freq" json:"tremolo_freq,omitempty"`
+	VibratoStrength *DoubleOrHold `protobuf:"bytes,5,opt,name=vibrato_strength" json:"vibrato_strength,omitempty"`
+	VibratoFreq     *DoubleOrHold `protobuf:"bytes,6,opt,name=vibrato_freq" json:"vibrato_freq,omitempty"`
 }
 
 func (m *PointSettings) Reset()                    { *m = PointSettings{} }
 func (m *PointSettings) String() string            { return proto.CompactTextString(m) }
 func (*PointSettings) ProtoMessage()               {}
-func (*PointSettings) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*PointSettings) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 func (m *PointSettings) GetFreq() *DoubleOrHold {
 	if m != nil {
@@ -457,13 +367,6 @@ func (m *PointSettings) GetVibratoFreq() *DoubleOrHold {
 	return nil
 }
 
-func (m *PointSettings) GetOscillator() *OscillatorOrHold {
-	if m != nil {
-		return m.Oscillator
-	}
-	return nil
-}
-
 type Point struct {
 	// Relative time; first should be 0. Must be ascending.
 	T        float64        `protobuf:"fixed64,1,opt,name=t" json:"t,omitempty"`
@@ -473,7 +376,7 @@ type Point struct {
 func (m *Point) Reset()                    { *m = Point{} }
 func (m *Point) String() string            { return proto.CompactTextString(m) }
 func (*Point) ProtoMessage()               {}
-func (*Point) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*Point) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
 func (m *Point) GetSettings() *PointSettings {
 	if m != nil {
@@ -492,7 +395,7 @@ type ADSREnvelope struct {
 func (m *ADSREnvelope) Reset()                    { *m = ADSREnvelope{} }
 func (m *ADSREnvelope) String() string            { return proto.CompactTextString(m) }
 func (*ADSREnvelope) ProtoMessage()               {}
-func (*ADSREnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*ADSREnvelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
 type Envelope struct {
 	// Types that are valid to be assigned to EnvelopeKind:
@@ -503,7 +406,7 @@ type Envelope struct {
 func (m *Envelope) Reset()                    { *m = Envelope{} }
 func (m *Envelope) String() string            { return proto.CompactTextString(m) }
 func (*Envelope) ProtoMessage()               {}
-func (*Envelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*Envelope) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 type isEnvelope_EnvelopeKind interface {
 	isEnvelope_EnvelopeKind()
@@ -584,41 +487,49 @@ func _Envelope_OneofSizer(msg proto.Message) (n int) {
 	return n
 }
 
-type Defaults struct {
-	Initial  *PointSettings `protobuf:"bytes,1,opt,name=initial" json:"initial,omitempty"`
-	Envelope *Envelope      `protobuf:"bytes,2,opt,name=envelope" json:"envelope,omitempty"`
+type Context struct {
+	Initial    *PointSettings `protobuf:"bytes,1,opt,name=initial" json:"initial,omitempty"`
+	Envelope   *Envelope      `protobuf:"bytes,2,opt,name=envelope" json:"envelope,omitempty"`
+	Oscillator *Oscillator    `protobuf:"bytes,3,opt,name=oscillator" json:"oscillator,omitempty"`
 }
 
-func (m *Defaults) Reset()                    { *m = Defaults{} }
-func (m *Defaults) String() string            { return proto.CompactTextString(m) }
-func (*Defaults) ProtoMessage()               {}
-func (*Defaults) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (m *Context) Reset()                    { *m = Context{} }
+func (m *Context) String() string            { return proto.CompactTextString(m) }
+func (*Context) ProtoMessage()               {}
+func (*Context) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
-func (m *Defaults) GetInitial() *PointSettings {
+func (m *Context) GetInitial() *PointSettings {
 	if m != nil {
 		return m.Initial
 	}
 	return nil
 }
 
-func (m *Defaults) GetEnvelope() *Envelope {
+func (m *Context) GetEnvelope() *Envelope {
 	if m != nil {
 		return m.Envelope
 	}
 	return nil
 }
 
+func (m *Context) GetOscillator() *Oscillator {
+	if m != nil {
+		return m.Oscillator
+	}
+	return nil
+}
+
 type Chirp struct {
-	BeginTime        float64   `protobuf:"fixed64,1,opt,name=begin_time" json:"begin_time,omitempty"`
-	Duration         float64   `protobuf:"fixed64,2,opt,name=duration" json:"duration,omitempty"`
-	Points           []*Point  `protobuf:"bytes,3,rep,name=points" json:"points,omitempty"`
-	DefaultsOverride *Defaults `protobuf:"bytes,4,opt,name=defaults_override" json:"defaults_override,omitempty"`
+	BeginTime       float64  `protobuf:"fixed64,1,opt,name=begin_time" json:"begin_time,omitempty"`
+	Duration        float64  `protobuf:"fixed64,2,opt,name=duration" json:"duration,omitempty"`
+	Points          []*Point `protobuf:"bytes,3,rep,name=points" json:"points,omitempty"`
+	ContextOverride *Context `protobuf:"bytes,4,opt,name=context_override" json:"context_override,omitempty"`
 }
 
 func (m *Chirp) Reset()                    { *m = Chirp{} }
 func (m *Chirp) String() string            { return proto.CompactTextString(m) }
 func (*Chirp) ProtoMessage()               {}
-func (*Chirp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*Chirp) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 func (m *Chirp) GetPoints() []*Point {
 	if m != nil {
@@ -627,22 +538,22 @@ func (m *Chirp) GetPoints() []*Point {
 	return nil
 }
 
-func (m *Chirp) GetDefaultsOverride() *Defaults {
+func (m *Chirp) GetContextOverride() *Context {
 	if m != nil {
-		return m.DefaultsOverride
+		return m.ContextOverride
 	}
 	return nil
 }
 
 type Chirps struct {
-	Chirp    []*Chirp  `protobuf:"bytes,1,rep,name=chirp" json:"chirp,omitempty"`
-	Defaults *Defaults `protobuf:"bytes,2,opt,name=defaults" json:"defaults,omitempty"`
+	Chirp    []*Chirp `protobuf:"bytes,1,rep,name=chirp" json:"chirp,omitempty"`
+	Defaults *Context `protobuf:"bytes,2,opt,name=defaults" json:"defaults,omitempty"`
 }
 
 func (m *Chirps) Reset()                    { *m = Chirps{} }
 func (m *Chirps) String() string            { return proto.CompactTextString(m) }
 func (*Chirps) ProtoMessage()               {}
-func (*Chirps) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*Chirps) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func (m *Chirps) GetChirp() []*Chirp {
 	if m != nil {
@@ -651,7 +562,7 @@ func (m *Chirps) GetChirp() []*Chirp {
 	return nil
 }
 
-func (m *Chirps) GetDefaults() *Defaults {
+func (m *Chirps) GetDefaults() *Context {
 	if m != nil {
 		return m.Defaults
 	}
@@ -659,53 +570,58 @@ func (m *Chirps) GetDefaults() *Defaults {
 }
 
 func init() {
+	proto.RegisterType((*SpectrumPoint)(nil), "aborapb.SpectrumPoint")
+	proto.RegisterType((*Spectrum)(nil), "aborapb.Spectrum")
 	proto.RegisterType((*DoubleOrHold)(nil), "aborapb.DoubleOrHold")
 	proto.RegisterType((*NoOptions)(nil), "aborapb.NoOptions")
 	proto.RegisterType((*Oscillator)(nil), "aborapb.Oscillator")
-	proto.RegisterType((*OscillatorOrHold)(nil), "aborapb.OscillatorOrHold")
 	proto.RegisterType((*PointSettings)(nil), "aborapb.PointSettings")
 	proto.RegisterType((*Point)(nil), "aborapb.Point")
 	proto.RegisterType((*ADSREnvelope)(nil), "aborapb.ADSREnvelope")
 	proto.RegisterType((*Envelope)(nil), "aborapb.Envelope")
-	proto.RegisterType((*Defaults)(nil), "aborapb.Defaults")
+	proto.RegisterType((*Context)(nil), "aborapb.Context")
 	proto.RegisterType((*Chirp)(nil), "aborapb.Chirp")
 	proto.RegisterType((*Chirps)(nil), "aborapb.Chirps")
 }
 
 var fileDescriptor0 = []byte{
-	// 532 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x94, 0x5f, 0x6f, 0xd3, 0x30,
-	0x14, 0xc5, 0x97, 0x35, 0x49, 0xd3, 0xdb, 0x3f, 0x6b, 0x8d, 0x36, 0xca, 0x03, 0x08, 0x19, 0x10,
-	0x43, 0x40, 0x27, 0xc1, 0x2b, 0x42, 0x1a, 0x14, 0xa9, 0x12, 0x88, 0x22, 0x26, 0x21, 0x1e, 0x90,
-	0x2a, 0xa7, 0xf1, 0x5a, 0x0b, 0x37, 0xce, 0x6c, 0xa7, 0x12, 0xe2, 0x13, 0xf2, 0xad, 0x70, 0x5d,
-	0x27, 0x21, 0x1b, 0x5d, 0xdf, 0xfc, 0xe7, 0xfa, 0x77, 0xee, 0x39, 0xbd, 0x0d, 0x0c, 0x32, 0x29,
-	0xb4, 0x38, 0x23, 0xb1, 0x90, 0x64, 0x64, 0xd7, 0xa8, 0x69, 0x37, 0x59, 0x8c, 0xdf, 0x42, 0x67,
-	0x2c, 0xf2, 0x98, 0xd3, 0xa9, 0x9c, 0x08, 0x9e, 0xa0, 0x23, 0x08, 0xd6, 0x84, 0xe7, 0x74, 0xe8,
-	0x3d, 0xf4, 0x4e, 0xbd, 0xc9, 0x01, 0xea, 0x81, 0xbf, 0x34, 0x17, 0xc3, 0x43, 0xb3, 0x8f, 0x26,
-	0x07, 0xef, 0xba, 0xd0, 0xfe, 0xb6, 0x29, 0xd8, 0xd6, 0xe3, 0x36, 0xb4, 0x3e, 0x8b, 0x69, 0xa6,
-	0x99, 0x48, 0x15, 0xa6, 0x00, 0x53, 0x35, 0x67, 0x9c, 0x13, 0x2d, 0x24, 0xc2, 0xe0, 0x2b, 0x96,
-	0x6e, 0x49, 0xed, 0x57, 0x68, 0xe4, 0x24, 0x47, 0x65, 0xbd, 0xa1, 0x3f, 0x86, 0x50, 0x5d, 0xe5,
-	0x44, 0x52, 0xcb, 0xdf, 0x51, 0xb5, 0xd1, 0xac, 0xb8, 0x0a, 0xff, 0x80, 0x7e, 0xb5, 0x75, 0x7d,
-	0x3f, 0x03, 0x10, 0xe5, 0x99, 0x93, 0xbc, 0x53, 0xc2, 0xaa, 0xf2, 0xfd, 0x8e, 0xfe, 0x1c, 0x42,
-	0xf7, 0x8b, 0x60, 0xa9, 0xbe, 0xa0, 0x5a, 0xb3, 0x74, 0xa1, 0xd0, 0x23, 0xf0, 0x2f, 0x25, 0xbd,
-	0x72, 0xd4, 0xe3, 0x92, 0x5a, 0x0b, 0xee, 0x14, 0x5a, 0x64, 0x95, 0x71, 0xa6, 0xf3, 0xa4, 0x30,
-	0xb3, 0xa3, 0xf2, 0x0c, 0xfa, 0x5a, 0xd2, 0x95, 0xe0, 0x62, 0xa6, 0xcc, 0x22, 0x5d, 0xe8, 0xe5,
-	0xb0, 0x71, 0xdb, 0x83, 0xe7, 0xd0, 0x29, 0x1e, 0xd8, 0x3e, 0xfc, 0x3d, 0xf4, 0x35, 0x8b, 0xa5,
-	0xf1, 0x5a, 0xd1, 0x83, 0x3d, 0xf4, 0xe2, 0x81, 0xa5, 0x87, 0xb7, 0x15, 0xbf, 0xac, 0xc5, 0xdc,
-	0xb4, 0xa5, 0xf7, 0xfe, 0x13, 0xb3, 0xcb, 0xf2, 0x0d, 0x04, 0x36, 0x4a, 0xd4, 0x02, 0x4f, 0x6f,
-	0x47, 0xca, 0x04, 0x15, 0x29, 0x97, 0xac, 0xcb, 0xe9, 0xa4, 0x04, 0xd4, 0x72, 0xc7, 0x19, 0x74,
-	0xce, 0xc7, 0x17, 0x5f, 0x3f, 0xa4, 0x6b, 0xca, 0x45, 0x46, 0xd1, 0x5d, 0x38, 0x22, 0x5a, 0x93,
-	0xf9, 0xcf, 0x59, 0x92, 0x9b, 0x7e, 0xcd, 0x70, 0x38, 0xe4, 0x09, 0xf4, 0x12, 0x3a, 0x27, 0xbf,
-	0xaa, 0xf3, 0x43, 0x7b, 0x3e, 0x84, 0xbe, 0xa4, 0x9c, 0x12, 0x45, 0xab, 0x9b, 0x86, 0xbd, 0x39,
-	0x86, 0xae, 0xca, 0x95, 0x26, 0x2c, 0x9d, 0x71, 0x6a, 0xf0, 0x36, 0x53, 0x0f, 0x9f, 0x43, 0x54,
-	0xaa, 0x3d, 0x01, 0x9f, 0x24, 0x4a, 0xde, 0xf8, 0xd5, 0xff, 0x6d, 0xc9, 0x4c, 0x4f, 0x0f, 0x3a,
-	0xc5, 0xee, 0x23, 0x4b, 0x13, 0xfc, 0x1d, 0xa2, 0x31, 0xbd, 0x24, 0x39, 0xd7, 0x0a, 0x3d, 0x85,
-	0x26, 0x4b, 0x99, 0x66, 0x84, 0x3b, 0xca, 0x0e, 0xa7, 0x66, 0xc2, 0x22, 0xea, 0x20, 0x2e, 0x93,
-	0x41, 0x59, 0x59, 0xd0, 0xf1, 0x6f, 0x08, 0xde, 0x2f, 0x99, 0xcc, 0x10, 0x02, 0x88, 0xe9, 0xc2,
-	0xb4, 0xae, 0xd9, 0xca, 0xfd, 0x51, 0x51, 0x1f, 0xa2, 0x6b, 0xe6, 0x1f, 0x40, 0x98, 0x6d, 0x44,
-	0x94, 0xb1, 0xdc, 0x30, 0xc4, 0x5e, 0x5d, 0x1b, 0xbd, 0x80, 0x41, 0xe2, 0x1a, 0x9d, 0x89, 0x35,
-	0x95, 0x92, 0x99, 0xc1, 0xf5, 0xaf, 0x89, 0x17, 0x56, 0xf0, 0x27, 0x08, 0xad, 0xb8, 0x42, 0xf7,
-	0x21, 0x98, 0x6f, 0x56, 0x46, 0xb8, 0x8e, 0xdd, 0x36, 0x67, 0xac, 0x14, 0xd8, 0x1b, 0x56, 0x0a,
-	0x5a, 0x1c, 0xda, 0xaf, 0xd0, 0xeb, 0xbf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x41, 0x9f, 0x1c, 0x14,
-	0x9a, 0x04, 0x00, 0x00,
+	// 596 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x84, 0x54, 0x5d, 0x4f, 0xdb, 0x30,
+	0x14, 0xa5, 0xb4, 0x29, 0xe5, 0xf6, 0x83, 0xd6, 0x13, 0xac, 0x7b, 0xd8, 0x34, 0x79, 0x1f, 0x54,
+	0x9b, 0x04, 0x12, 0x7b, 0x9d, 0x26, 0x31, 0x98, 0x84, 0x84, 0x36, 0xa6, 0x21, 0xed, 0x35, 0x72,
+	0x12, 0xd3, 0x58, 0x73, 0xed, 0x60, 0x3b, 0xdd, 0x78, 0xdb, 0xef, 0xd8, 0xaf, 0x9d, 0xe3, 0x38,
+	0x09, 0x05, 0x15, 0xde, 0xec, 0x9b, 0xe3, 0x73, 0xcf, 0xf1, 0x3d, 0x31, 0x4c, 0x32, 0x25, 0x8d,
+	0x3c, 0x24, 0x91, 0x54, 0xe4, 0xc0, 0xad, 0xd1, 0x96, 0xdb, 0x64, 0x11, 0xd6, 0x30, 0xbc, 0xcc,
+	0x68, 0x6c, 0x54, 0xbe, 0xf8, 0x2e, 0x99, 0x30, 0x68, 0x02, 0xdb, 0x64, 0x91, 0x71, 0x66, 0xf2,
+	0x84, 0x4e, 0x5b, 0x2f, 0x5b, 0xb3, 0x56, 0x51, 0xba, 0x52, 0xf4, 0x3a, 0xa7, 0x22, 0xbe, 0x99,
+	0x6e, 0xba, 0xd2, 0x10, 0x82, 0x2c, 0x25, 0x9a, 0x4e, 0x03, 0xb7, 0xdd, 0x85, 0x21, 0x97, 0xbf,
+	0xc3, 0x06, 0xd5, 0x76, 0xe5, 0x3d, 0x18, 0xa5, 0x6c, 0x9e, 0xde, 0xaa, 0x77, 0x8a, 0x3a, 0xfe,
+	0x0a, 0xbd, 0xaa, 0x29, 0x7a, 0x0b, 0xdd, 0xac, 0x68, 0xac, 0x6d, 0xb3, 0xf6, 0xac, 0x7f, 0xb4,
+	0x77, 0xe0, 0xa5, 0x1d, 0xac, 0xea, 0x7a, 0x06, 0x13, 0x21, 0x17, 0x4c, 0x10, 0x1e, 0xde, 0x11,
+	0x83, 0x3f, 0xc1, 0xe0, 0x54, 0xe6, 0x11, 0xa7, 0x17, 0xea, 0x4c, 0xf2, 0x04, 0xed, 0x40, 0xb0,
+	0x24, 0x3c, 0xf7, 0xf2, 0xcf, 0x36, 0xd0, 0x08, 0x3a, 0xa9, 0xfd, 0xe0, 0xe0, 0xbd, 0xb3, 0x8d,
+	0xcf, 0x43, 0xe8, 0xff, 0x2c, 0x00, 0x25, 0x1e, 0xf7, 0x61, 0xfb, 0x9b, 0xbc, 0xc8, 0x0c, 0x93,
+	0x42, 0x63, 0x0a, 0x70, 0xa1, 0x63, 0xc6, 0x39, 0x31, 0x52, 0x21, 0x0c, 0x1d, 0xcd, 0x44, 0xc9,
+	0xd4, 0x3f, 0x42, 0xb5, 0xb6, 0x1a, 0x6f, 0xd9, 0x5f, 0x43, 0x57, 0x5f, 0xe7, 0x44, 0x51, 0xc7,
+	0xbf, 0x06, 0x55, 0xf4, 0x6c, 0x78, 0x35, 0xfe, 0xb7, 0x09, 0x43, 0x67, 0xec, 0x92, 0x1a, 0xc3,
+	0xc4, 0x5c, 0xa3, 0x57, 0xd0, 0x29, 0x8c, 0xf9, 0x56, 0xbb, 0x35, 0xc9, 0x8a, 0xb5, 0xd9, 0xed,
+	0xe9, 0x6c, 0x3e, 0x84, 0x3c, 0x84, 0xb1, 0x51, 0x74, 0x21, 0xb9, 0x0c, 0xb5, 0x5d, 0x88, 0xb9,
+	0x49, 0xdd, 0x54, 0xd6, 0x1e, 0x78, 0x0f, 0x83, 0xea, 0x80, 0xd3, 0xd1, 0x79, 0x84, 0x7d, 0xc9,
+	0x22, 0x65, 0xbd, 0x34, 0xec, 0xc1, 0x23, 0xec, 0xd5, 0x01, 0xc7, 0xde, 0x7d, 0x00, 0x8c, 0x3f,
+	0x42, 0x50, 0x0e, 0x7d, 0x1b, 0x5a, 0xc6, 0x87, 0x70, 0x06, 0x3d, 0xed, 0xaf, 0xca, 0x1b, 0x6f,
+	0x92, 0xb2, 0x72, 0x91, 0x38, 0x83, 0xc1, 0xf1, 0xe9, 0xe5, 0x8f, 0x2f, 0x62, 0x49, 0xb9, 0xcc,
+	0x28, 0x7a, 0x0a, 0x3b, 0xc4, 0x18, 0x12, 0xff, 0x0a, 0x93, 0xdc, 0x0a, 0xb0, 0xf3, 0xf0, 0x94,
+	0x36, 0x9e, 0x09, 0x8d, 0xc9, 0x4d, 0x53, 0x2f, 0xc3, 0x3d, 0x85, 0xb1, 0xa2, 0x9c, 0xda, 0x78,
+	0x37, 0x5f, 0xda, 0x55, 0xce, 0x75, 0xae, 0x0d, 0x61, 0x22, 0xe4, 0xd4, 0xd2, 0xfb, 0x3c, 0x1f,
+	0x43, 0xaf, 0xee, 0xf6, 0x06, 0x3a, 0x24, 0xd1, 0xea, 0xde, 0x18, 0x6f, 0x4b, 0xb2, 0x71, 0x18,
+	0xc1, 0xa0, 0xda, 0x9d, 0x33, 0x91, 0xe0, 0xbf, 0x2d, 0xd8, 0x3a, 0x91, 0xc2, 0xd0, 0x3f, 0x06,
+	0xed, 0xc3, 0x16, 0x13, 0xcc, 0x30, 0xc2, 0x3d, 0xcb, 0x1a, 0xa7, 0x36, 0x32, 0x3d, 0xea, 0x49,
+	0xfc, 0x9d, 0x4c, 0x6a, 0x64, 0x2d, 0x68, 0x1f, 0x40, 0xd6, 0xc1, 0xf3, 0x11, 0x78, 0x52, 0xc3,
+	0x9a, 0x4c, 0xe2, 0x1b, 0x08, 0x4e, 0x52, 0xa6, 0x32, 0x84, 0x00, 0x22, 0x3a, 0xb7, 0x1e, 0x0d,
+	0x5b, 0x54, 0x6f, 0xc0, 0x18, 0x7a, 0x77, 0x6e, 0xe9, 0x45, 0xfd, 0xe3, 0xb6, 0xdd, 0x8f, 0x3b,
+	0x5a, 0x15, 0x89, 0xde, 0xc1, 0x38, 0x2e, 0x0d, 0x85, 0x72, 0x49, 0x95, 0x62, 0x36, 0xb1, 0x65,
+	0xa6, 0xc6, 0x35, 0xd2, 0x3b, 0xc6, 0xe7, 0xd0, 0x75, 0xad, 0x35, 0x7a, 0x0e, 0x41, 0x5c, 0xac,
+	0xfc, 0x6b, 0xd0, 0x90, 0x96, 0xd2, 0xb0, 0x95, 0x41, 0xaf, 0x48, 0xce, 0x4d, 0x95, 0x82, 0x7b,
+	0x64, 0x51, 0xd7, 0x3d, 0x71, 0x1f, 0xfe, 0x07, 0x00, 0x00, 0xff, 0xff, 0x6d, 0xe4, 0x83, 0xcf,
+	0xf7, 0x04, 0x00, 0x00,
 }
