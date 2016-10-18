@@ -29,6 +29,7 @@ message Oscillator {
   oneof Oscillators {
     NoOptions sine = 1;
     NoOptions square = 2;
+    Spectrum spectrum = 3;
   }
 }
 

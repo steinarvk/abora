@@ -187,8 +187,10 @@ func makeVarying(def *pb.Point, xs []*pb.Point, name string, errOut *error, extr
 
 func FromProto(spec *pb.Chirp, context *pb.Context) (*TimedChirp, error) {
 	context = OverrideContext(
-		OverrideContext(nil, defaultsContext),
-		context)
+		OverrideContext(
+			OverrideContext(nil, defaultsContext),
+			context),
+		spec.ContextOverride)
 
 	initialPoint := &pb.Point{T: 0, Settings: context.Initial}
 

@@ -1,6 +1,7 @@
 package oscillator
 
 import (
+	"log"
 	"math"
 
 	aborapb "github.com/steinarvk/abora/proto"
@@ -21,6 +22,8 @@ func FromSpectrum(spec *aborapb.Spectrum) Oscillator {
 	// is played back at its nominal frequency, it sounds
 	// like the original spectrum.
 	correction := 1.0 / nominal
+
+	log.Printf("loading spectrum: %v", spec)
 
 	rv := &multiOscillator{}
 	var totalW float64
