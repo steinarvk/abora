@@ -1,0 +1,60 @@
+duration: 5
+points: <t: 0.0 settings: <amplitude: <value: 0.5>>>
+points: <t: 0.0 settings: <vibrato_strength: <value: 0.0>>>
+points: <t: 0.0 settings: <vibrato_freq: <value: 3>>>
+points: <t: 3 settings: <vibrato_strength: <value: 0.02>>>
+points: <t: 5 settings: <vibrato_freq: <value: 6>>>
+context_override: <
+  oscillator: <
+    spectrum: <
+      points: <
+        amplitude: 0.5
+        frequency: 95
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 190
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 285
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 380
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 475
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 570
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 665
+      >
+      points: <
+        amplitude: 0.5
+        frequency: 760
+      >
+      points: <
+        amplitude: 0.25
+        frequency: 855
+      >
+      points: <
+        amplitude: 0.15
+        frequency: 950
+      >
+      points: <
+        amplitude: 0.1
+        frequency: 1045
+      >
+      points: <
+        amplitude: 0.05
+        frequency: 1140
+      >
+    >
+  >
+>
